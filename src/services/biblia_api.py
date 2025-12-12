@@ -1,7 +1,6 @@
-import requests
 import os
-import json
 from dotenv import load_dotenv
+import aiohttp
 
 load_dotenv()
 
@@ -15,22 +14,24 @@ PROPRIETARY_USER_AGENT = f"{APP_NAME}/{APP_VERSION} ({CONTACT_INFO})"
 
 headers = {
     "User-Agent": PROPRIETARY_USER_AGENT, 
-    "Authorization": f"Bearer {BIBLIA_API_KEY}",
+    "Authorization": f"Bearer {BIBLIA_API_KEY}" if BIBLIA_API_KEY else "",
     "Accept": "*/*", 
     "Accept-Encoding": "gzip, deflate, br",
     "Connection": "keep-alive"
 }
 
-def get_versions():
+async def get_versions():
     """
     Função para a coleta das versões disponíveis na API da Bíblia.
     Retorna uma lista, mostrando as versões da biblia disponíveis e o id vinculado à elas.
     """
-    response = requests.get(f"{BIBLIA_API_URL}get_versions.php", headers=headers)
-    response.raise_for_status()
-    return response.json()
+    url = f"{BIBLIA_API_URL}get_versions.php"
+    async with aiohttp.ClientSession(headers=headers) as session:
+        async with session.get(url, timeout=10) as response:
+            response.raise_for_status()
+            return await response.json()
 
-def get_verses(version_id: int, book_id: int, chapter_id: int, verse: int = None, verse_start: int = None, verse_end: int = None):
+async def get_verses(version_id: int, book_id: int, chapter_id: int, verse: int = None, verse_start: int = None, verse_end: int = None):
     """
     Função para a coleta dos versículos de uma determinada versão, livro, capítulo e versículo(s).
     
@@ -47,18 +48,26 @@ def get_verses(version_id: int, book_id: int, chapter_id: int, verse: int = None
     :param verse_end: Número do versículo final para um intervalo
     :type verse_end: int
     """
+    url = f"{BIBLIA_API_URL}get_verses.php"
     params = {
         "version_id": version_id,
         "book_id": book_id,
         "chapter_id": chapter_id,
-        "verse": verse,
-        "verse_start": verse_start,
-        "verse_end": verse_end
     }
 
-    response = requests.get(f"{BIBLIA_API_URL}get_verses.php", headers=headers, params=params)
-    response.raise_for_status()
-    return response.json()
+    # Apenas adiciona o parâmetro se ele existir
+    if verse is not None:
+        params["verse"] = verse
+    if verse_start is not None:
+        params["verse_start"] = verse_start
+    if verse_end is not None:
+        params["verse_end"] = verse_end
+
+
+    async with aiohttp.ClientSession(headers=headers) as session:
+        async with session.get(url, params=params, timeout=10) as response:
+            response.raise_for_status()
+            return await response.json()
 
 #obter versões disponíveis
 # data = get_versions()
