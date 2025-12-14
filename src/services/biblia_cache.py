@@ -57,9 +57,9 @@ class BibliaCache:
 
         params = {"version_id": version_id}
 
-        async with get_session() as session:
-            async with session.get(URL_BOOKS, params=params) as resp:
-                data = await resp.json()
+        session = get_session()
+        data = await fetch_with_retry(session, "GET", URL_BOOKS, params=params)
+        print(f"[DEBUG] Loaded books for version {version_id}:", data)
 
         books_map = {}
 

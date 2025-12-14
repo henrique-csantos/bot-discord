@@ -1,4 +1,4 @@
-from src.services.http_client import get_session, BIBLIA_API_URL
+from src.services.http_client import get_session, fetch_with_retry, BIBLIA_API_URL
 
 async def get_versions():
     """
@@ -6,11 +6,9 @@ async def get_versions():
     Retorna uma lista, mostrando as versões da biblia disponíveis e o id vinculado à elas.
     """
     url = f"{BIBLIA_API_URL}get_versions.php"
-    async with get_session() as session:
-        async with session.get(url, timeout=10) as response:
-            response.raise_for_status()
-            print("[DEBUG] URL:", response.url)
-            return await response.json()
+    session = get_session()
+    data = await fetch_with_retry(session, "GET", url)
+    return data
 
 async def get_verses(version_id: int, book_id: int, chapter_id: int, verse: int = None, verse_start: int = None, verse_end: int = None):
     """
@@ -48,11 +46,53 @@ async def get_verses(version_id: int, book_id: int, chapter_id: int, verse: int 
         params["verse_end"] = verse_end
 
 
-    async with get_session() as session:
-        async with session.get(url, params=params, timeout=10) as response:
-            response.raise_for_status()
-            print("[DEBUG] URL:", response.url)
-            return await response.json()
+    session = get_session()
+    data = await fetch_with_retry(session, "GET", url, params=params)
+    return data
+        
+async def search_exact_words(
+    version_id: int,
+    keyword: str,
+    book_id: int | None = None,
+    chapter_id: int | None = None,
+    verse_start: int | None = None,
+    verse_end: int | None = None,
+):
+    """
+    Função para buscar versículos que contenham exatamente uma palavra-chave específica.
+    :param version_id: ID da versão da Bíblia
+    :param keyword: Palavra-chave a ser buscada
+    :param book_id: ID do livro da Bíblia (opcional)
+    :param chapter_id: Número do capítulo (opcional)
+    :param verse_start: Número do versículo inicial para um intervalo (opcional)
+    :param verse_end: Número do versículo final para um intervalo (opcional)
+    """
+    url = f"{BIBLIA_API_URL}search_exact_words.php"
+
+    params = {
+        "version_id": version_id,
+        "keyword": keyword
+    }
+
+    if book_id is not None:
+        params["book_id"] = book_id
+
+    if chapter_id is not None:
+        params["chapter_id"] = chapter_id
+
+    if verse_start is not None and verse_end is not None:
+        if verse_start > verse_end:
+            raise ValueError("verse_start não pode ser maior que verse_end")
+        params["verse_start"] = verse_start
+        params["verse_end"] = verse_end
+
+    print("[DEBUG] search_exact_words params:", params)
+
+    session = get_session()
+    data = await fetch_with_retry(session, "GET", url, params=params)
+
+    return data.get("verses", [])
+
 
 #obter versões disponíveis
 # data = get_versions()

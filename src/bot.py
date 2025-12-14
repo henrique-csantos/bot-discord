@@ -5,6 +5,7 @@ from src.services.http_client import close_session
 
 async def load_extensions(bot):
     await bot.load_extension("src.commands.versiculo")
+    await bot.load_extension("src.commands.buscar")
 
 async def main():
     intents = discord.Intents.default()
@@ -18,7 +19,11 @@ async def main():
 
     try:
         await load_extensions(bot)
-        print("Comandos carregados:", bot.commands)
+        # print("Comandos carregados:", bot.commands)
+        print("Comandos carregados:")
+        for cmd in bot.commands:
+            print("-", cmd.name)
+
         await bot.start(TOKEN)
     finally:
         await close_session()
