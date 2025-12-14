@@ -1,8 +1,19 @@
-import aiohttp
 import unicodedata
+from src.services.http_client import get_session
 
 URL_VERSIONS = "https://pesquisarnabiblia.com.br/api-projeto/api/get_versions.php"
 URL_BOOKS = "https://pesquisarnabiblia.com.br/api-projeto/api/get_books.php"
+
+VERSION_ALIASES = {
+    "nvi": "nova versao internacional",
+    "acf": "almeida corrigida e fiel",
+    "ara": "almeida revista e atualizada",
+    "arc": "almeida revista e corrigida",
+    "kjv": "king james version",
+    "kja": "king james atualizada",
+    "tb": "traducao brasileira"
+}
+
 
 class BibliaCache:
 
@@ -26,14 +37,17 @@ class BibliaCache:
         if self._versions is not None:
             return
 
-        async with aiohttp.ClientSession() as session:
+        async with get_session() as session:
             async with session.get(URL_VERSIONS) as resp:
                 data = await resp.json()
+                print("[DEBUG] Loaded versions:", data)
 
         self._versions = {}
+
         for item in data:
-            normalized = self.normalize(item["abbrev"])
-            self._versions[normalized] = int(item["id"])
+            name_norm = self.normalize(item["name"])
+            self._versions[name_norm] = int(item["id"])
+
 
     # ------------------------------
     # Carrega livros de uma versão
@@ -44,39 +58,37 @@ class BibliaCache:
 
         params = {"version_id": version_id}
 
-        async with aiohttp.ClientSession() as session:
+        async with get_session() as session:
             async with session.get(URL_BOOKS, params=params) as resp:
                 data = await resp.json()
 
         books_map = {}
 
         for item in data:
-            # abreviações
-            normalized_abbrev = self.normalize(item["abbrev"])
-            books_map[normalized_abbrev] = int(item["id"])
-
-            # nome completo
-            normalized_name = self.normalize(item["name"])
-            books_map[normalized_name] = int(item["id"])
+            name = self.normalize(item["name"])
+            books_map[name] = int(item["id"])
 
         self._books[version_id] = books_map
 
+
     # ------------------------------
-    # GETTERS REALMENTE USADOS PELO BOT
+    # GETTERS USADOS PELO BOT
     # ------------------------------
-    async def get_version_id(self, version_name: str) -> int:
-        """Retorna o ID da versão baseado na sigla. (ex: 'nvi')"""
+    async def get_version_id(self, version_input: str) -> int:
         await self.load_versions()
 
-        norm = self.normalize(version_name)
+        norm = self.normalize(version_input)
+
+        # resolver alias (nvi → nova versao internacional)
+        norm = VERSION_ALIASES.get(norm, norm)
 
         if norm not in self._versions:
-            raise ValueError(f"Versão desconhecida: {version_name}")
+            raise ValueError(f"Versão desconhecida: {version_input}")
 
         return self._versions[norm]
 
+
     async def get_book_id(self, version_id: int, book_name: str) -> int:
-        """Retorna o ID do livro baseado na abreviação OU nome completo."""
         await self.load_books(version_id)
 
         norm = self.normalize(book_name)
@@ -87,5 +99,4 @@ class BibliaCache:
         return self._books[version_id][norm]
 
 
-# Instância única usada pelo bot
 biblia_cache = BibliaCache()

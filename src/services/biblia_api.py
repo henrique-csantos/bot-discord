@@ -1,24 +1,4 @@
-import os
-from dotenv import load_dotenv
-import aiohttp
-
-load_dotenv()
-
-BIBLIA_API_URL = os.getenv("BIBLIA_API_URL")
-BIBLIA_API_KEY = os.getenv("BIBLIA_API_KEY")
-APP_NAME = os.getenv("APP_NAME")
-APP_VERSION = os.getenv("APP_VERSION")
-CONTACT_INFO = os.getenv("CONTACT_INFO")
-
-PROPRIETARY_USER_AGENT = f"{APP_NAME}/{APP_VERSION} ({CONTACT_INFO})"
-
-headers = {
-    "User-Agent": PROPRIETARY_USER_AGENT, 
-    "Authorization": f"Bearer {BIBLIA_API_KEY}" if BIBLIA_API_KEY else "",
-    "Accept": "*/*", 
-    "Accept-Encoding": "gzip, deflate, br",
-    "Connection": "keep-alive"
-}
+from src.services.http_client import get_session, BIBLIA_API_URL
 
 async def get_versions():
     """
@@ -26,9 +6,10 @@ async def get_versions():
     Retorna uma lista, mostrando as versões da biblia disponíveis e o id vinculado à elas.
     """
     url = f"{BIBLIA_API_URL}get_versions.php"
-    async with aiohttp.ClientSession(headers=headers) as session:
+    async with get_session() as session:
         async with session.get(url, timeout=10) as response:
             response.raise_for_status()
+            print("[DEBUG] URL:", response.url)
             return await response.json()
 
 async def get_verses(version_id: int, book_id: int, chapter_id: int, verse: int = None, verse_start: int = None, verse_end: int = None):
@@ -54,6 +35,9 @@ async def get_verses(version_id: int, book_id: int, chapter_id: int, verse: int 
         "book_id": book_id,
         "chapter_id": chapter_id,
     }
+    
+    print("[DEBUG] GET get_verses.php")
+    print("[DEBUG] Params:", params)
 
     # Apenas adiciona o parâmetro se ele existir
     if verse is not None:
@@ -64,9 +48,10 @@ async def get_verses(version_id: int, book_id: int, chapter_id: int, verse: int 
         params["verse_end"] = verse_end
 
 
-    async with aiohttp.ClientSession(headers=headers) as session:
+    async with get_session() as session:
         async with session.get(url, params=params, timeout=10) as response:
             response.raise_for_status()
+            print("[DEBUG] URL:", response.url)
             return await response.json()
 
 #obter versões disponíveis
