@@ -1,5 +1,5 @@
 import unicodedata
-from src.services.http_client import get_session
+from src.services.http_client import get_session, fetch_with_retry
 
 URL_VERSIONS = "https://pesquisarnabiblia.com.br/api-projeto/api/get_versions.php"
 URL_BOOKS = "https://pesquisarnabiblia.com.br/api-projeto/api/get_books.php"
@@ -37,10 +37,9 @@ class BibliaCache:
         if self._versions is not None:
             return
 
-        async with get_session() as session:
-            async with session.get(URL_VERSIONS) as resp:
-                data = await resp.json()
-                print("[DEBUG] Loaded versions:", data)
+        session = get_session()
+        data = await fetch_with_retry(session, "GET", URL_VERSIONS)
+        print("[DEBUG] Loaded versions:", data)
 
         self._versions = {}
 
