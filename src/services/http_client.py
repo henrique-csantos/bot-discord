@@ -1,7 +1,7 @@
 import os
-import asyncio
 import aiohttp
-from aiohttp import ClientResponseError
+import asyncio
+from aiohttp import ClientResponseError, TCPConnector
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -22,30 +22,43 @@ HEADERS = {
 
 _session: aiohttp.ClientSession | None = None
 
-def get_session():
+
+def get_session() -> aiohttp.ClientSession:
     global _session
+
     if _session is None or _session.closed:
-        _session = aiohttp.ClientSession(headers=HEADERS)
+        connector = TCPConnector(limit=20, enable_cleanup_closed=True)
+        _session = aiohttp.ClientSession(
+            headers=HEADERS,
+            connector=connector
+        )
+
     return _session
 
-async def close_session():
-    global _session
-    if _session is not None and not _session.closed:
-        await _session.close()
-        _session = None
 
-async def fetch_with_retry(session, method, url, *, params=None, retries=3):
+async def fetch_with_retry(
+    session: aiohttp.ClientSession,
+    method: str,
+    url: str,
+    *,
+    params: dict | None = None,
+    retries: int = 3
+):
     delay = 1
 
     for attempt in range(retries):
         try:
-            async with session.request(method, url, params=params, timeout=10) as resp:
+            async with session.request(
+                method,
+                url,
+                params=params,
+                timeout=aiohttp.ClientTimeout(total=15)
+            ) as resp:
                 resp.raise_for_status()
                 return await resp.json()
 
-        except (asyncio.TimeoutError, ClientResponseError) as e:
+        except (asyncio.TimeoutError, ClientResponseError):
             if attempt == retries - 1:
                 raise
             await asyncio.sleep(delay)
             delay *= 2
-
