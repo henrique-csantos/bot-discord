@@ -10,6 +10,7 @@ async def load_extensions(bot: commands.Bot):
     await bot.load_extension("src.commands.buscar")
     await bot.load_extension("src.commands.slash_versiculo")
     await bot.load_extension("src.commands.slash_capitulo")
+    await bot.load_extension("src.commands.slash_buscar")
 
 
 async def main():
@@ -26,6 +27,8 @@ async def main():
 
         # Copia comandos globais para o servidor de teste
         bot.tree.copy_global_to(guild=guild)
+        await bot.tree.sync(guild=guild)
+
 
         for cmd in bot.tree.get_commands():
             print("Slash:", cmd.name)

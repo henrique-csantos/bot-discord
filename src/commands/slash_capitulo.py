@@ -4,6 +4,8 @@ from discord.ext import commands
 
 from src.services.biblia_cache import biblia_cache
 from src.services.biblia_api import get_verses
+from src.utils.helpers import split_text
+from src.ui.paginator import Paginator
 
 class SlashCapitulo(commands.Cog):
 
@@ -19,7 +21,7 @@ class SlashCapitulo(commands.Cog):
         livro="Ex: joao, genesis, romanos",
         capitulo="Número do capítulo",
     )
-    async def versiculo(
+    async def capitulo(
         self,
         interaction: discord.Interaction,
         versao: str,
@@ -49,13 +51,20 @@ class SlashCapitulo(commands.Cog):
                 return
 
             referencia = f"{livro.title()} {capitulo} ({versao.upper()})"
-            texto = "\n".join(
+            texto_completo = "\n".join(
                 f"**{v['verse_number']}** {v['text'].strip()}"
                 for v in verses
             )
+            
+            pages = split_text(texto_completo)
+
+            pages[0] = f"📖 **{referencia}**\n\n{pages[0]}"
+
+            view = Paginator(pages=pages)
 
             await interaction.followup.send(
-                f"📖 **{referencia}**\n{texto[:1900]}"  # Limitando o texto a 1900 caracteres
+                content=pages[0],
+                view=view
             )
 
         except Exception as e:

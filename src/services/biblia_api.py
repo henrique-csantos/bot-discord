@@ -89,18 +89,15 @@ async def search_exact_words(
     print("[DEBUG] search_exact_words params:", params)
 
     session = get_session()
-    data = await fetch_with_retry(session, "GET", url, params=params)
+    data = await fetch_with_retry(
+        session,
+        "GET",
+        f"{BIBLIA_API_URL}/search_exact_words.php",
+        params={
+            "version_id": version_id,
+            "keyword": keyword
+        }
+    )
 
+    # ✅ garante contrato estável
     return data.get("verses", [])
-
-
-#obter versões disponíveis
-# data = get_versions()
-
-# for versao in data:
-#     print(versao["id"], versao["name"])
-
-#obter versículos
-# verses_data = get_verses(version_id=1, book_id=1, chapter_id=1, verse=1)
-# texto = verses_data["verses"][0]["text"]
-# print(texto)
